@@ -46,6 +46,7 @@ import android.text.TextUtils;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataUtils;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.State;
@@ -582,14 +583,26 @@ public class NetworkTypeController extends StateMachine {
         int value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         if ((getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
                 || mServiceState.isUsingCarrierAggregation())
-                && IntStream.of(mServiceState.getCellBandwidths()).sum()
-                > mLtePlusThresholdBandwidth) {
+                || isLteCaInPhysicalChannelConfig()
+                // always report LTE+ if available
+                /*&& IntStream.of(mServiceState.getCellBandwidths()).sum()
+                > mLtePlusThresholdBandwidth)*/) {
             value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA;
         }
         if (isLteEnhancedAvailable()) {
             value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO;
         }
         return value;
+    }
+
+    private boolean isLteCaInPhysicalChannelConfig() {
+        List<PhysicalChannelConfig> physicalChannelConfigList =
+                mPhone.getServiceStateTracker().getPhysicalChannelConfigList();
+        if (ArrayUtils.isEmpty(physicalChannelConfigList)) {
+            return false;
+        }
+        return physicalChannelConfigList.stream()
+                .anyMatch(item -> item.getNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA);
     }
 
     private boolean isLteEnhancedAvailable() {
